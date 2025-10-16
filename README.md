@@ -58,4 +58,4 @@ data/cf_dataset.csv with columns:
 ## 👩‍💻 Authors
 
 **Team 43 — Georgia Tech**  
-Chrissa da Gomez, René Pirolt, Bill Dvorkin, Evan Kai Hallberg, Elizabeth Kirk
+Chrissa da Gomez, Rene Pirolt, Bill Dvorkin, Evan Kai Hallberg, Elizabeth Kirk
