@@ -4,12 +4,11 @@ A data visualization and recommendation project that uses data from [BoardGameGe
 
 
 ## 📊 Data Source
-Dataset from Kaggle:[Board Games Database from BoardGameGeek](https://www.kaggle.com/datasets/threnjen/board-games-database-from-boardgamegeek/data)
+Dataset from Kaggle: [Board Games Database from BoardGameGeek](https://www.kaggle.com/datasets/threnjen/board-games-database-from-boardgamegeek/data)
 
 ## 🧰 Requirements
 
-Make sure you have **Python 3.8+** installed.  
-Install dependencies using:
+Make sure you have **Python 3.8+** installed. Install dependencies using:
 
 ```bash
 pip install -r requirements.txt
@@ -19,6 +18,8 @@ If you don’t have Jupyter installed yet:
 ```bash
 pip install jupyter
 ```
+Make sure to have a data folder consisting of:
+- data
 ## ▶️ How to Run the Jupyter Notebook
 
 Activate your virtual environment (if using one):
@@ -32,7 +33,7 @@ Launch Jupyter Notebook:
 jupyter notebook
 ```
 
-Once Jupyter opens in your browser, navigate to the project folder and open the notebook file:
+Once Jupyter opens in your browser, navigate to the project folder and open a notebook file. For example:
 ```bash
 notebooks/data_exploration.ipynb
 ```

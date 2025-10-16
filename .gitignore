@@ -9,6 +9,7 @@ anaconda_projects/db/*.db
 # Data
 bgg.db
 *.csv
+!data/*.csv
 
 # Jupyter
 .ipynb_checkpoints/
