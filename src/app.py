@@ -2,7 +2,6 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from llm import category_columns
 from model_ensemble import ensemble_scores
 
 st.set_page_config(page_title="Board Game Recommender", layout="wide")
@@ -14,7 +13,31 @@ st.caption("Hybrid recommendations powered by Collaborative Filtering (CF), Cont
 def load_data():
     return pd.read_csv("../data/games.csv")
 
+@st.cache_data
+def load_mechanics():
+    mechanics_df = pd.read_csv(
+        "../data/game_mechanics.csv", header=None, names=["mechanic"]
+    )
+    return mechanics_df["mechanic"].dropna().sort_values().tolist()
+
+@st.cache_data
+def load_categories():
+    categories_df = pd.read_csv(
+        "../data/game_categories.csv", header=None, names=["category"]
+    )
+    return categories_df["category"].dropna().sort_values().tolist()
+
+@st.cache_data
+def load_game_types():
+    game_types_df = pd.read_csv(
+        "../data/game_types.csv", header=None, names=["type"]
+    )
+    return game_types_df["type"].dropna().sort_values().tolist()
+
 games_df = load_data()
+mechanics_options = load_mechanics()
+categories_options = load_categories()
+game_type_options = load_game_types()
 
 # ========== SIDEBAR ==========
 st.sidebar.header("Your Preferences")
@@ -28,17 +51,17 @@ year_range = st.sidebar.slider("Year Published", 1990, 2021, (2000, 2021))
 rating_min = st.sidebar.slider("Minimum Rating", 1.0, 10.0, 6.0)
 
 # --- CBF inputs ---
-min_players = st.sidebar.slider("Minimum Players", 1, 20, 2)
-max_players = st.sidebar.slider("Maximum Players", 1, 20, 4)
+min_players, max_players = st.sidebar.slider(
+    "Player Count Range", 1, 20, (2, 4)
+)
 play_time = st.sidebar.selectbox("Play Time", ["<30 mins", "30–60 mins", "60–90 mins", "90–120 mins", ">120 mins"])
 complexity = st.sidebar.slider("Complexity", 1.0, 5.0, (2.3, 3.6), 0.1)
-mechanics = st.sidebar.multiselect("Game Mechanics", ["Worker Placement", "Deck Building", "Engine Building", "Area Control", "Tile Placement"])
-categories = st.sidebar.multiselect("Game Category", [c.replace("Cat:", "") for c in category_columns])
-game_type = st.sidebar.multiselect("Game Type", ["Strategy", "Family", "Thematic", "Abstract", "Party"])
+mechanics = st.sidebar.multiselect("Game Mechanics", mechanics_options)
+categories = st.sidebar.multiselect("Game Category", categories_options)
+game_type = st.sidebar.multiselect("Game Type", game_type_options)
 
 # --- LLM input ---
 description = st.sidebar.text_area("Describe the kind of board game you enjoy", placeholder="Example: I like strategic games with some luck and engine building mechanics.")
-user_id = st.sidebar.number_input("User ID (for CF model)", min_value=1, value=1, step=1)
 
 # ========== FILTER DISPLAY ==========
 filtered_df = games_df.copy()
@@ -81,7 +104,7 @@ if st.button("Get Recommendations"):
 
         try:
             rec_df = ensemble_scores(
-                user_id=int(user_id),
+                user_id=1,
                 user_description=description,
                 user_preferences=user_prefs,
                 top_n=10,

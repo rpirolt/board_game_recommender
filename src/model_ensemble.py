@@ -6,7 +6,7 @@ Combines CF, CBF, and LLM scores using a hybrid weighting scheme.
 import pandas as pd
 from cf import get_cf_scores
 from cbf import get_cbf_scores
-from llm import get_llm_scores
+from llm import get_llm_scores, category_columns
 
 def ensemble_scores(
     user_id: int,
@@ -41,10 +41,24 @@ def ensemble_scores(
     """
     cf_df = get_cf_scores(user_id=user_id, top_n=top_n)
     cbf_df = get_cbf_scores(user_preferences=user_preferences, top_n=top_n)
+    category_pref = user_preferences.get("category")
+    if isinstance(category_pref, (list, tuple, set)):
+        category_pref = next(
+            (c for c in category_pref if isinstance(c, str) and c.strip()), None
+        )
+    if not isinstance(category_pref, str) or not category_pref.strip():
+        category_pref = "Strategy"
+    else:
+        category_pref = category_pref.strip()
+
+    valid_llm_categories = {col.split(":", 1)[1] for col in category_columns}
+    if category_pref not in valid_llm_categories:
+        category_pref = "Strategy"
+
     llm_df = get_llm_scores(
         user_description=user_description,
         min_players=user_preferences.get("min_players", 2),
-        category=user_preferences.get("category", "Strategy"),
+        category=category_pref,
         top_n=top_n
     )
 
