@@ -1,5 +1,6 @@
 import io
 import os
+import numpy as np
 import pandas as pd
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -25,7 +26,7 @@ merged_df = pd.merge(
 # Extract all category columns automatically
 category_columns = [col for col in games_df.columns if col.startswith("Cat:")]
 
-def get_llm_scores(user_description: str, min_players: int, category: str, top_n: int = 10):
+def get_llm_scores(user_description: str, min_players: int, category: str):
     """
     Generate LLM-based relevance scores for candidate games based on the user description.
     Returns a DataFrame: [BGGId, Name, LLM_Score].
@@ -109,6 +110,7 @@ def get_llm_scores(user_description: str, min_players: int, category: str, top_n
         if col not in llm_scores_df.columns:
             llm_scores_df[col] = default
     llm_scores_df = llm_scores_df[["Name", "LLM_Score"]]
+    
     # Coerce scores to numeric, salvaging simple textual annotations like "0.85 (high)"
     if llm_scores_df["LLM_Score"].dtype == object:
         llm_scores_df["LLM_Score"] = (
@@ -129,17 +131,23 @@ def get_llm_scores(user_description: str, min_players: int, category: str, top_n
     llm_scores_df = candidate_lookup.merge(llm_scores_df, on="Name", how="right")
     llm_scores_df.dropna(subset=["BGGId"], inplace=True)
 
-    if top_n:
-        llm_scores_df = llm_scores_df.sort_values("LLM_Score", ascending=False).head(top_n)
+    # Create a zero-filled array for all games
+    full_scores = np.zeros(len(games_df))
 
-    return llm_scores_df[["BGGId", "Name", "LLM_Score"]]
+    # Map scores to the correct BGGId in games_df
+    score_map = dict(zip(llm_scores_df["BGGId"], llm_scores_df["LLM_Score"]))
+    for idx, row in games_df.iterrows():
+        bgg_id = row["BGGId"] if "BGGId" in games_df.columns else row["bgg_id"]
+        if bgg_id in score_map:
+            full_scores[idx] = score_map[bgg_id]
 
+    return full_scores
 
 if __name__ == "__main__":
-    # Example usage
-    df = get_llm_scores(
+    scores = get_llm_scores(
         user_description="I love cooperative adventure games with fantasy storytelling.",
         min_players=4,
         category="Strategy"
     )
-    print(df)
+    print("LLM Scores:", scores)
+    print("LLM Scores Length:", len(scores))
