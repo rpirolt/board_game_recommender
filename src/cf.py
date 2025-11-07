@@ -21,9 +21,7 @@ def fold_in_implicit_user(V, liked_items, alpha=5, lambda_=0.03):
     b = V_i.T @ (C_i * np.ones(len(liked_items), dtype=np.float32))
     
     u_new = np.linalg.solve(A, b)
-    print("DEBUG V shape:", V.shape)
-    print("DEBUG liked_items dtype:", liked_items.dtype)
-    print("DEBUG liked_items:", liked_items)
+    
     return u_new
 
 def get_cf_scores(
