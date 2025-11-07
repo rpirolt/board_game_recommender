@@ -272,8 +272,8 @@ disliked_games = st.sidebar.multiselect("Disliked Board Games", games_df["Name"]
 
 # --- Filter inputs ---
 year_range = st.sidebar.slider("Year Published", 1990, 2021, (2000, 2021))
-rating_min, rating_max = st.sidebar.slider(
-    "Rating Range", 1.0, 10.0, (6.0, 9.5), step=1.0, format="%d"
+rating_min = st.sidebar.slider(
+    "Minimum Rating", 1.0, 10.0, 6.5, step=0.5
 )
 
 # --- CBF inputs ---
@@ -322,7 +322,7 @@ if st.sidebar.button("Get Recommendations"):
             exclude_games=[],
             attributes=attributes,
             description=description,
-            n_recommendations=24,
+            n_recommendations=20,
             alpha=0.5,
             beta=0.33,
         )
