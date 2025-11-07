@@ -104,7 +104,8 @@ def ensemble_scores(liked_games=None,
         Combined recommendations with composite score.
     """
     # get cf_scores
-    cf_scores = get_cf_scores(ratings = liked_games)
+
+    cf_scores = get_cf_scores(liked_items = liked_games)
     
     # get cbf_scores
     cbf_scores = get_cbf_scores(attributes=attributes)
