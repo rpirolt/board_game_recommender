@@ -5,7 +5,7 @@ from openai import OpenAI
 
 import streamlit as st
 
-client = OpenAI(api_key=st.secrets.OPENAI_API_KEY)
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # Load game data
 games_df = pd.read_csv("./data/games_master_data.csv", encoding="utf-8-sig")
