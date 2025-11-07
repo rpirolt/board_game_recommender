@@ -13,6 +13,7 @@ FONT_SECONDARY = "#1C1C1C"           # Dark text for light backgrounds
 BORDER_COLOR = "rgba(0, 0, 0, 0.1)"  # Soft divider/border line
 SLIDER_NOTCH_COLOR = "#A4B465"          # Muted green for slider accents
 SLIDER_ACTIVE_COLOR = "#626F47"         # Darker green for active slider track
+BUTTON_COLOR = "#A4B465"               # Accent for primary calls-to-action
 PLACEHOLDER_TEXT = "rgba(60, 60, 60, 0.6)"  # Placeholder gray
 
 st.set_page_config(page_title="Board Game Recommender", layout="wide")
@@ -104,6 +105,23 @@ section.main > div.block-container {{
   color: {FONT_SECONDARY} !important;
 }}
 
+/* Sidebar primary button */
+[data-testid="stSidebar"] .stButton button {{
+  background-color: {BUTTON_COLOR} !important;
+  color: {BACKGROUND_INPUT} !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 0.5rem 1.75rem !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}}
+
+[data-testid="stSidebar"] .stButton button:hover {{
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}}
+
 /* Add visible round notch (thumb handle) */
 [data-testid="stSidebar"] .stSlider [role="slider"] {{
   -webkit-appearance: none;
@@ -140,6 +158,7 @@ st.markdown(
         align-items: center;
         margin: 2rem auto 3rem auto;
         max-width: 1600px;
+        padding: 0 2rem;
         gap: 2rem;
     ">
         <div style="flex: 1.5;">
@@ -228,6 +247,23 @@ categories_options = load_categories()
 game_type_options = load_game_types()
 master_assets = load_master_assets()
 DEFAULT_THUMBNAIL = "https://images.pexels.com/photos/411207/pexels-photo-411207.jpeg?auto=compress&cs=tinysrgb&h=320&w=320"
+CARD_GRID_STYLE = """
+<style>
+.game-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;margin-top:1.5rem}
+.game-card{background-color:#1A2B22;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:transform .2s, box-shadow .2s}
+.game-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.35)}
+.game-image{width:100%;height:220px;object-fit:cover}
+.game-content{padding:1rem 1.25rem;color:#F5F5E6}
+.game-title{font-size:1.15rem;font-weight:700;margin-bottom:.4rem}
+.game-meta{font-size:.9rem;color:#B8B8B8;display:flex;gap:1rem;align-items:center;margin-bottom:.6rem}
+.game-desc{font-size:.95rem;color:#CCC;margin-bottom:.8rem}
+.game-link{color:#A4B465;font-weight:600;text-decoration:none}
+.game-link:hover{text-decoration:underline}
+</style>
+"""
+
+if "recommendations" not in st.session_state:
+    st.session_state["recommendations"] = None
 
 # ========== SIDEBAR ==========
 st.sidebar.header("Your Preferences")
@@ -254,81 +290,81 @@ game_type = st.sidebar.multiselect("Game Type", game_type_options)
 description = st.sidebar.text_area("Describe the kind of board game you enjoy",
                                    placeholder="Example: I like strategic games with some luck and engine building mechanics.")
 
-# ========== FILTER DISPLAY ==========
-filtered_df = games_df.copy()
+# ========= RUN RECOMMENDER ==========
+if st.sidebar.button("Get Recommendations"):
+    # Build attribute dictionary from sidebar selections
+    attributes = {
+        "game_categories": categories,
+        "game_mechanics": mechanics,
+        "game_types": game_type,
+        "game_weight": list(complexity),
+        "players": [min_players, max_players],
+        "year_published": list(year_range),
+        "min_rating": [rating_min],
+    }
 
-if "YearPublished" in filtered_df.columns:
-    filtered_df = filtered_df.query("YearPublished >= @year_range[0] and YearPublished <= @year_range[1]")
-if "AvgRating" in filtered_df.columns:
-    filtered_df = filtered_df[
-        (filtered_df["AvgRating"] >= rating_min)
-        & (filtered_df["AvgRating"] <= rating_max)
-    ]
-if {"MinPlayers", "MaxPlayers"} <= set(filtered_df.columns):
-    filtered_df = filtered_df.query("MinPlayers <= @max_players and MaxPlayers >= @min_players")
+    # Map play time text to numeric range
+    play_time_map = {
+        "<30 mins": [0, 30],
+        "30–60 mins": [30, 60],
+        "60–90 mins": [60, 90],
+        "90–120 mins": [90, 120],
+        ">120 mins": [120, 9999],
+    }
+    attributes["play_time"] = play_time_map.get(play_time, [0, 9999])
 
-st.subheader("Games Matching Your Basic Filters")
-st.write(f"{len(filtered_df)} games found.")
-
-if not filtered_df.empty:
-    if "Category" in filtered_df.columns:
-        fig, ax = plt.subplots(figsize=(7, 3))
-        filtered_df["Category"].value_counts().head(10).sort_values().plot(
-            kind="barh", ax=ax, color="white"
-        )
-        ax.set_facecolor(BACKGROUND_COLOR)
-        fig.patch.set_facecolor(BACKGROUND_COLOR)
-        ax.set_title("Top Game Categories", color="white")
-        ax.set_xlabel("Count", color="white")
-        ax.tick_params(colors="white")
-        for spine in ax.spines.values():
-            spine.set_color("white")
-        st.pyplot(fig)
-
-    # --- Highlight Top Matches ---
-    highlight_df = filtered_df.head(8)[["BGGId", "Name", "AvgRating"]].copy()
-    if not highlight_df.empty:
-        highlight_df = highlight_df.merge(
-            master_assets, left_on="BGGId", right_index=True, how="left"
+    # Call the hybrid ensemble recommender
+    with st.spinner("Generating recommendations..."):
+        recommendations = ensemble_scores(
+            liked_games=[] if not liked_games else games_df.loc[games_df["Name"].isin(liked_games), "BGGId"].tolist(),
+            disliked_games=[] if not disliked_games else games_df.loc[games_df["Name"].isin(disliked_games), "BGGId"].tolist(),
+            exclude_games=[],
+            attributes=attributes,
+            description=description,
+            n_recommendations=8,
+            alpha=0.5,
+            beta=0.33,
         )
 
-    # Card styles
-    st.markdown("""
-    <style>
-    .game-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;margin-top:1.5rem}
-    .game-card{background-color:#1A2B22;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:transform .2s, box-shadow .2s}
-    .game-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.35)}
-    .game-image{width:100%;height:200px;object-fit:cover}
-    .game-content{padding:1rem 1.25rem;color:#F5F5E6}
-    .game-title{font-size:1.2rem;font-weight:700;margin-bottom:.4rem}
-    .game-meta{font-size:.9rem;color:#B8B8B8;display:flex;gap:1rem;align-items:center;margin-bottom:.6rem}
-    .game-desc{font-size:.95rem;color:#CCC;margin-bottom:.8rem}
-    .game-link{color:#A4B465;font-weight:600;text-decoration:none}
-    .game-link:hover{text-decoration:underline}
-    </style>
-    """, unsafe_allow_html=True)
+    if not isinstance(recommendations, pd.DataFrame):
+        recommendations = pd.DataFrame()
 
-    # Build grid HTML (no leading whitespace)
+    st.session_state["recommendations"] = recommendations
+
+recommendations_df = st.session_state.get("recommendations")
+st.markdown(CARD_GRID_STYLE, unsafe_allow_html=True)
+st.markdown("## Recommended Games for You")
+if recommendations_df is None:
+    st.info("Use the sidebar to set your preferences and generate recommendations.")
+elif isinstance(recommendations_df, pd.DataFrame) and recommendations_df.empty:
+    st.warning("No recommendations found. Try adjusting your filters or description.")
+elif isinstance(recommendations_df, pd.DataFrame):
+    recommendations_df = recommendations_df.reset_index(drop=True)
+    recommendations_df = recommendations_df.merge(
+        master_assets, left_on="bgg_id", right_index=True, how="left"
+    )
+
     cards = ['<div class="game-grid">']
-    for _, row in highlight_df.iterrows():
-        image_url = (row.get("asset_url") or DEFAULT_THUMBNAIL)
-        title = str(row["Name"])
-        rating_val = row.get("AvgRating")
-        rating_text = f"{float(rating_val):.2f}" if pd.notna(rating_val) else "N/A"
-        desc = f"Average Rating: {rating_text}"
+    for _, row in recommendations_df.iterrows():
+        image_url = row.get("asset_url") or DEFAULT_THUMBNAIL
+        title = str(row["name"])
+        score = row.get("recommender_score", 0)
+        desc = f"Hybrid Score: {score:.3f}"
 
         cards.append(
             f'<div class="game-card">'
             f'  <img src="{image_url}" class="game-image" alt="{title}">'
             f'  <div class="game-content">'
             f'    <div class="game-title">{title}</div>'
-            f'    <div class="game-meta">⭐ {rating_text}</div>'
+            f'    <div class="game-meta">⭐ {row.get("avg_rating", "N/A")}</div>'
             f'    <div class="game-desc">{desc}</div>'
-            f'    <a href="https://boardgamegeek.com/" class="game-link" target="_blank">View on BGG →</a>'
+            f'    <a href="{row.get("bgg_link", "https://boardgamegeek.com/")}" '
+            f'       class="game-link" target="_blank">View on BGG →</a>'
             f'  </div>'
             f'</div>'
         )
     cards.append("</div>")
     st.markdown("".join(cards), unsafe_allow_html=True)
+else:
+    st.warning("Unable to display recommendations. Please try running the search again.")
 
-st.markdown("</div>", unsafe_allow_html=True)

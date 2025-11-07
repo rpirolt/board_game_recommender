@@ -109,6 +109,7 @@ def ensemble_scores(liked_games=None,
     
     # get cbf_scores
     cbf_scores = get_cbf_scores(attributes=attributes)
+    
 
     # get llm_scores
     min_players = 1
