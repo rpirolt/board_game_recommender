@@ -286,18 +286,67 @@ categories_options = load_categories()
 game_type_options = load_game_types()
 master_assets = load_master_assets()
 DEFAULT_THUMBNAIL = "https://images.pexels.com/photos/411207/pexels-photo-411207.jpeg?auto=compress&cs=tinysrgb&h=320&w=320"
-CARD_GRID_STYLE = """
+CARD_GRID_STYLE = f"""
 <style>
-.game-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;margin-top:1.5rem}
-.game-card{background-color:#1A2B22;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:transform .2s, box-shadow .2s}
-.game-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.35)}
-.game-image{width:100%;height:220px;object-fit:cover}
-.game-content{padding:1rem 1.25rem;color:#F5F5E6}
-.game-title{font-size:1.15rem;font-weight:700;margin-bottom:.4rem}
-.game-meta{font-size:.9rem;color:#B8B8B8;display:flex;gap:1rem;align-items:center;margin-bottom:.6rem}
-.game-desc{font-size:.95rem;color:#CCC;margin-bottom:.8rem}
-.game-link{color:{FONT_TERTIARY};font-weight:600;text-decoration:none}
-.game-link:hover{text-decoration:none}
+.game-grid {{
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}}
+.game-card {{
+    background-color: #1A2B22;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: stretch;
+    min-height: 220px;
+}}
+.game-card:hover {{
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}}
+.game-image {{
+    width: 220px;
+    height: 220px;
+    object-fit: cover;
+    flex-shrink: 0;
+}}
+.game-content {{
+    padding: 1rem 1.25rem;
+    color: #F5F5E6;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}}
+.game-title {{
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+}}
+.game-meta {{
+    font-size: 0.9rem;
+    color: #B8B8B8;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.6rem;
+}}
+.game-desc {{
+    font-size: 0.95rem;
+    color: #CCC;
+    margin-bottom: 0.8rem;
+}}
+.game-link {{
+    color: {FONT_TERTIARY};
+    font-weight: 600;
+    text-decoration: none;
+}}
+.game-link:hover {{
+    text-decoration: none;
+}}
 </style>
 """
 
@@ -376,8 +425,9 @@ st.sidebar.slider(
     1990,
     2021,
     value=st.session_state["year_range"],
-    key="year_range"
+    key="year_range_slider"
 )
+st.session_state["year_range"] = st.session_state["year_range_slider"]
 year_range = st.session_state["year_range"]
 rating_min = st.sidebar.slider(
     "Minimum Rating", 1.0, 10.0, 6.5, step=0.5, format="%.1f"
@@ -455,7 +505,7 @@ if selected_model:
             exclude_games=[],
             attributes=attributes,
             description=description,
-            n_recommendations=20,
+            n_recommendations=5,
             alpha=alpha,
             beta=beta,
         )
@@ -488,7 +538,7 @@ elif isinstance(recommendations_df, pd.DataFrame):
     )
 
     cards = ['<div class="game-grid">']
-    for _, row in recommendations_df.iterrows():
+    for _, row in recommendations_df.head(5).iterrows():
         image_url = row.get("asset_url") or DEFAULT_THUMBNAIL
         title = str(row["name"])
         score = row.get("recommender_score", 0)
