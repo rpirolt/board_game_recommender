@@ -10,7 +10,7 @@ from model_ensemble import ensemble_scores
 BACKGROUND_COLOR = "#12241C"         # Dark green for main background
 BACKGROUND_SECONDARY = "#F5F5E6"     # Light gray for sidebar/user input area
 BACKGROUND_INPUT = "#FFFFFF"         # White input box background
-FONT_PRIMARY = "#F1F1E5"             # Off-white text on dark background
+FONT_PRIMARY = "#FFF8E7"             # Off-white text on dark background
 FONT_SECONDARY = "#1C1C1C"           # Dark text for light backgrounds
 FONT_TERTIARY = "#C5CBB5"            # Accent text color
 CARD_COLOR = "#12241C"                # Card background matches main background
@@ -403,6 +403,12 @@ CARD_GRID_STYLE = f"""
 .game-link:hover {{
     text-decoration: none;
 }}
+.game-insight {{
+    font-size: 0.95rem;
+    color: {FONT_PRIMARY};
+    margin-bottom: 0.6rem;
+    line-height: 1.35;
+}}
 </style>
 """
 
@@ -412,6 +418,8 @@ if "recommendation_reason" not in st.session_state:
     st.session_state["recommendation_reason"] = None
 if "search_context" not in st.session_state:
     st.session_state["search_context"] = {}
+if "game_insights" not in st.session_state:
+    st.session_state["game_insights"] = {}
 
 
 def generate_recommendation_reason(context: dict, recommendations: pd.DataFrame) -> Optional[str]:
@@ -444,6 +452,40 @@ def generate_recommendation_reason(context: dict, recommendations: pd.DataFrame)
                     "content": (
                         "You are a helpful, upbeat friend who explains recommendations directly to the user. "
                         "Be conversational and positive, avoid sounding corporate."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.4,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception:
+        return None
+
+
+def generate_game_insight(game_info: dict, context: dict) -> Optional[str]:
+    payload = {
+        "user_preferences": context,
+        "game": game_info,
+    }
+    prompt = (
+        "You are a friendly board game concierge chatting with the user. "
+        "Using the structured data below, write one short sentence (max 30 words) "
+        "explaining why this game could be awesome for them. "
+        "Reference specific mechanics, themes, player counts, or play time when possible. "
+        "Do not repeat the game name verbatim.\n\n"
+        f"{json.dumps(payload, indent=2)}"
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an expert board game sommelier. "
+                        "Be vivid, concise, and upbeat."
                     ),
                 },
                 {"role": "user", "content": prompt},
@@ -676,6 +718,22 @@ elif isinstance(recommendations_df, pd.DataFrame):
             play_time_display = derive_playtime(details) or play_time_display
             players_display = derive_players(details) or players_display
 
+        insight_key = int(bgg_id) if pd.notna(bgg_id) else title
+        insight_text = st.session_state["game_insights"].get(insight_key)
+        if insight_text is None:
+            game_payload = {
+                "name": title,
+                "avg_rating": rating_display,
+                "categories": row.get("game_categories", []),
+                "mechanics": row.get("game_mechanics", []),
+                "hybrid_score": score,
+                "play_time": play_time_display,
+                "players": players_display,
+            }
+            context = st.session_state.get("search_context", {})
+            insight_text = generate_game_insight(game_payload, context) or ""
+            st.session_state["game_insights"][insight_key] = insight_text
+
         cards.append(
             f'<div class="game-card">'
             f'  <div class="game-image-wrapper">'
@@ -690,6 +748,7 @@ elif isinstance(recommendations_df, pd.DataFrame):
             f'      <span class="meta-item"><span class="player-icon">&#128101;</span>'
             f'        <span class="meta-value">{players_display}</span></span>'
             f'    </div>'
+            f'    <div class="game-insight">{insight_text or "We think this will be a great fit!"}</div>'
             f'    <div class="game-desc">{desc}</div>'
             f'    <a href="{bgg_link}" '
             f'       class="game-link" target="_blank">View on BGG &rarr;</a>'
@@ -699,22 +758,6 @@ elif isinstance(recommendations_df, pd.DataFrame):
     cards.append("</div>")
     st.markdown("".join(cards), unsafe_allow_html=True)
 
-    st.subheader("Why we think you'll like these games", anchor=None)
-
-    explanation_text = st.session_state.get("recommendation_reason")
-    if explanation_text is None:
-        with st.spinner(""):
-            explanation = generate_recommendation_reason(
-                st.session_state.get("search_context", {}),
-                recommendations_df,
-            )
-            st.session_state["recommendation_reason"] = explanation
-            explanation_text = explanation
-
-    if explanation_text:
-        st.write(explanation_text)
-    else:
-        st.info("We couldn't generate a personalized explanation this time.")
 else:
     st.warning("Unable to display recommendations. Please try running the search again.")
 
