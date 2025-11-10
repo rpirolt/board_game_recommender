@@ -10,10 +10,12 @@ from model_ensemble import ensemble_scores
 BACKGROUND_COLOR = "#12241C"         # Dark green for main background
 BACKGROUND_SECONDARY = "#F5F5E6"     # Light gray for sidebar/user input area
 BACKGROUND_INPUT = "#FFFFFF"         # White input box background
-FONT_PRIMARY = "#F5F5E6"             # Off-white text on dark background
+FONT_PRIMARY = "#F1F1E5"             # Off-white text on dark background
 FONT_SECONDARY = "#1C1C1C"           # Dark text for light backgrounds
-FONT_TERTIARY = "#A4B465"            # Accent text color
+FONT_TERTIARY = "#C5CBB5"            # Accent text color
+CARD_COLOR = "#12241C"                # Card background matches main background
 BORDER_COLOR = "rgba(0, 0, 0, 0.1)"  # Soft divider/border line
+CARD_BORDER_COLOR = "#1A3629"        # Card border accent
 SLIDER_NOTCH_COLOR = "#A4B465"          # Muted green for slider accents
 SLIDER_ACTIVE_COLOR = "#626F47"         # Darker green for active slider track
 BUTTON_COLOR = "#A4B465"               # Muted green for buttons
@@ -267,7 +269,18 @@ def load_game_types():
 
 @st.cache_data
 def load_master_assets():
-    cols = ["bgg_id", "name", "thumbnail", "image", "ImagePath", "bgg_link"]
+    cols = [
+        "bgg_id",
+        "thumbnail",
+        "image",
+        "ImagePath",
+        "bgg_link",
+        "players_min",
+        "players_max",
+        "time_min",
+        "time_max",
+        "time_avg",
+    ]
     master_df = pd.read_csv("./data/games_master_data.csv", usecols=cols)
     master_df["bgg_id"] = pd.to_numeric(master_df["bgg_id"], errors="coerce").astype("Int64")
     master_df.dropna(subset=["bgg_id"], inplace=True)
@@ -277,10 +290,11 @@ def load_master_assets():
         .fillna(master_df["image"])
     )
     master_df.dropna(subset=["asset_url"], inplace=True)
-    master_df = master_df[["bgg_id", "asset_url", "bgg_link"]].drop_duplicates("bgg_id")
+    master_df = master_df.drop_duplicates("bgg_id")
     return master_df.set_index("bgg_id")
 
 games_df = load_data()
+games_lookup = games_df.set_index("BGGId")
 mechanics_options = load_mechanics()
 categories_options = load_categories()
 game_type_options = load_game_types()
@@ -295,10 +309,12 @@ CARD_GRID_STYLE = f"""
     margin-top: 1.5rem;
 }}
 .game-card {{
-    background-color: #1A2B22;
+    background-color: {CARD_COLOR};
+    color: {FONT_SECONDARY};
     border-radius: 16px;
+    border: 0.5px solid {CARD_BORDER_COLOR};
     overflow: hidden;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s, box-shadow 0.2s;
     display: flex;
     align-items: stretch;
@@ -308,31 +324,71 @@ CARD_GRID_STYLE = f"""
     transform: translateY(-4px);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }}
-.game-image {{
+.game-image-wrapper {{
     width: 220px;
     height: 220px;
-    object-fit: cover;
     flex-shrink: 0;
+    overflow: hidden;
+    border-top-left-radius: 16px;
+    border-bottom-left-radius: 16px;
+}}
+.game-image-wrapper img {{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
 }}
 .game-content {{
     padding: 1rem 1.25rem;
-    color: #F5F5E6;
     display: flex;
     flex-direction: column;
     justify-content: center;
 }}
 .game-title {{
-    font-size: 1.15rem;
+    font-size: 1.35rem;
     font-weight: 700;
     margin-bottom: 0.4rem;
+    color: {FONT_PRIMARY};
 }}
 .game-meta {{
-    font-size: 0.9rem;
+    font-size: 1rem;
     color: #B8B8B8;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.6rem;
+}}
+.game-meta .star-icon {{
+    color: #ffcc00;
+    font-size: 1.2rem;
+}}
+.game-meta .rating-value {{
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: {FONT_PRIMARY};
+}}
+.game-meta-secondary {{
+    font-size: 0.95rem;
+    color: {FONT_SECONDARY};
     display: flex;
     gap: 1rem;
     align-items: center;
-    margin-bottom: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}}
+.game-meta-secondary .meta-item {{
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+}}
+.game-meta-secondary .clock-icon,
+.game-meta-secondary .player-icon {{
+    color: #ffcc00;
+    font-size: 1rem;
+}}
+.game-meta-secondary .meta-value {{
+    color: {FONT_TERTIARY};
 }}
 .game-desc {{
     font-size: 0.95rem;
@@ -417,11 +473,8 @@ default_year_range = (2000, 2021)
 if "year_range" not in st.session_state:
     st.session_state["year_range"] = default_year_range
 
-year_range_label = (
-    f"Year Published ({st.session_state['year_range'][0]} - {st.session_state['year_range'][1]})"
-)
 st.sidebar.slider(
-    year_range_label,
+    "Year Published",
     1990,
     2021,
     value=st.session_state["year_range"],
@@ -534,7 +587,7 @@ elif isinstance(recommendations_df, pd.DataFrame) and recommendations_df.empty:
 elif isinstance(recommendations_df, pd.DataFrame):
     recommendations_df = recommendations_df.reset_index(drop=True)
     recommendations_df = recommendations_df.merge(
-        master_assets, left_on="bgg_id", right_index=True, how="left"
+        master_assets, left_on="bgg_id", right_index=True, how="left", suffixes=("", "_asset")
     )
 
     cards = ['<div class="game-grid">']
@@ -554,12 +607,89 @@ elif isinstance(recommendations_df, pd.DataFrame):
         avg_rating = row.get("avg_rating")
         rating_display = f"{avg_rating:.1f}" if pd.notna(avg_rating) else "N/A"
 
+        def _valid(val):
+            return pd.notna(val) and val > 0
+
+        def derive_playtime(source):
+            min_pt = (
+                source.get("time_min_asset")
+                or source.get("ComMinPlaytime")
+                or source.get("time_min")
+            )
+            max_pt = (
+                source.get("time_max_asset")
+                or source.get("ComMaxPlaytime")
+                or source.get("time_max")
+            )
+            avg_pt = (
+                source.get("time_avg_asset")
+                or source.get("MfgPlaytime")
+                or source.get("time_avg")
+            )
+
+            if _valid(min_pt) and _valid(max_pt):
+                min_val = int(min_pt)
+                max_val = int(max_pt)
+                if min_val == max_val:
+                    return f"{min_val} mins"
+                return f"{min_val}-{max_val} mins"
+            if _valid(avg_pt):
+                return f"{int(avg_pt)} mins"
+            if _valid(min_pt):
+                return f"{int(min_pt)} mins"
+            if _valid(max_pt):
+                return f"{int(max_pt)} mins"
+            return None
+
+        play_time_display = derive_playtime(row) or "N/A"
+
+        def derive_players(source):
+            min_players = (
+                source.get("players_min_asset")
+                or source.get("players_min")
+                or source.get("MinPlayers")
+            )
+            max_players = (
+                source.get("players_max_asset")
+                or source.get("players_max")
+                or source.get("MaxPlayers")
+            )
+            if pd.notna(min_players) and pd.notna(max_players):
+                min_val = int(min_players)
+                max_val = int(max_players)
+                if min_val == max_val:
+                    return f"{min_val}"
+                return f"{min_val}-{max_val}"
+            if pd.notna(min_players):
+                return f"{int(min_players)}"
+            if pd.notna(max_players):
+                return f"{int(max_players)}"
+            return None
+
+        players_display = derive_players(row) or "N/A"
+
+        bgg_id = row.get("bgg_id")
+        if pd.notna(bgg_id) and bgg_id in games_lookup.index:
+            details = games_lookup.loc[bgg_id]
+            if isinstance(details, pd.DataFrame):
+                details = details.iloc[0]
+            play_time_display = derive_playtime(details) or play_time_display
+            players_display = derive_players(details) or players_display
+
         cards.append(
             f'<div class="game-card">'
-            f'  <img src="{image_url}" class="game-image" alt="{title}">'
+            f'  <div class="game-image-wrapper">'
+            f'    <img src="{image_url}" alt="{title}">'
+            f'  </div>'
             f'  <div class="game-content">'
             f'    <div class="game-title">{title}</div>'
-            f'    <div class="game-meta">&#9733; {rating_display}</div>'
+            f'    <div class="game-meta"><span class="star-icon">&#9733;</span> <span class="rating-value">{rating_display}</span></div>'
+            f'    <div class="game-meta-secondary">'
+            f'      <span class="meta-item"><span class="clock-icon">&#128337;</span>'
+            f'        <span class="meta-value">{play_time_display}</span></span>'
+            f'      <span class="meta-item"><span class="player-icon">&#128101;</span>'
+            f'        <span class="meta-value">{players_display}</span></span>'
+            f'    </div>'
             f'    <div class="game-desc">{desc}</div>'
             f'    <a href="{bgg_link}" '
             f'       class="game-link" target="_blank">View on BGG &rarr;</a>'
