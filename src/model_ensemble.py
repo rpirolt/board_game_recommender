@@ -248,6 +248,7 @@ def ensemble_scores(liked_games=None,
     recommendations['cf_score_component'] = cf_component[top_n_idx].round(4)
     recommendations['cbf_score_component'] = cbf_component[top_n_idx].round(4)
     recommendations['llm_score_component'] = llm_component[top_n_idx].round(4)
+    recommendations['n_rank'] = range(1, len(recommendations) + 1)
 
     return recommendations
 

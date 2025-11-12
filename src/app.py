@@ -23,6 +23,7 @@ PLACEHOLDER_TEXT = "rgba(60, 60, 60, 0.6)"  # Placeholder gray
 
 st.set_page_config(page_title="Board Game Recommender", layout="wide")
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+n_games = 8 
 
 # ========= CUSTOM CSS =========
 CUSTOM_STYLE = f"""
@@ -383,6 +384,7 @@ CARD_GRID_STYLE = f"""
     font-weight: 600;
 }}
 .game-meta-secondary .clock-icon,
+.game-meta-secondary .cog-icon,
 .game-meta-secondary .player-icon {{
     color: #ffcc00;
     font-size: 1rem;
@@ -533,9 +535,9 @@ play_time = st.sidebar.selectbox(
     "Play Time",
     ["Any", "<30 mins", "30-60 mins", "60-90 mins", "90-120 mins", ">120 mins"],
 )
-complexity = st.sidebar.slider("Complexity", 1.0, 5.0, (2.3, 3.6), 0.1, format="%.1f")
+complexity = st.sidebar.slider("Weight", 1.0, 5.0, (2.3, 3.6), 0.1, format="%.1f")
 mechanics = st.sidebar.multiselect("Game Mechanics", mechanics_options)
-categories = st.sidebar.multiselect("Game Category", categories_options)
+categories = st.sidebar.multiselect("Game Category/Theme", categories_options)
 game_type = st.sidebar.multiselect("Game Type", game_type_options)
 
 # --- LLM input ---
@@ -600,7 +602,7 @@ if selected_model:
             exclude_games=[],
             attributes=attributes,
             description=description,
-            n_recommendations=5,
+            n_recommendations=n_games,
             alpha=alpha,
             beta=beta,
         )
@@ -633,9 +635,9 @@ elif isinstance(recommendations_df, pd.DataFrame):
     )
 
     cards = ['<div class="game-grid">']
-    for _, row in recommendations_df.head(5).iterrows():
+    for _, row in recommendations_df.head(n_games).iterrows():
         image_url = row.get("asset_url") or DEFAULT_THUMBNAIL
-        title = str(row["name"])
+        title = str(row["n_rank"]) + ".  " + str(row["name"])
         score = row.get("recommender_score", 0)
         desc = f"Hybrid Score: {score:.3f}"
         bgg_link = row.get("bgg_link")
@@ -648,6 +650,8 @@ elif isinstance(recommendations_df, pd.DataFrame):
 
         avg_rating = row.get("avg_rating")
         rating_display = f"{avg_rating:.1f}" if pd.notna(avg_rating) else "N/A"
+        game_weight = row.get("game_weight")
+        weight_display = str(f"{game_weight:.2f}") + "/5" if pd.notna(game_weight) else "N/A"
 
         def _valid(val):
             return pd.notna(val) and val > 0
@@ -724,6 +728,7 @@ elif isinstance(recommendations_df, pd.DataFrame):
             game_payload = {
                 "name": title,
                 "avg_rating": rating_display,
+                "game_weight": weight_display,
                 "categories": row.get("game_categories", []),
                 "mechanics": row.get("game_mechanics", []),
                 "hybrid_score": score,
@@ -747,6 +752,8 @@ elif isinstance(recommendations_df, pd.DataFrame):
             f'        <span class="meta-value">{play_time_display}</span></span>'
             f'      <span class="meta-item"><span class="player-icon">&#128101;</span>'
             f'        <span class="meta-value">{players_display}</span></span>'
+            f'      <span class="meta-item"><span class="cog-icon">&#9881;</span>'
+            f'        <span class="meta-value">{weight_display}</span></span>'
             f'    </div>'
             f'    <div class="game-insight">{insight_text or "We think this will be a great fit!"}</div>'
             f'    <div class="game-desc">{desc}</div>'
