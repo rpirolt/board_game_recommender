@@ -163,7 +163,7 @@ def apply_attribute_filters(df: pd.DataFrame, attributes: Optional[Dict[str, Any
 def get_llm_scores(
     user_description: str,
     attributes: Optional[Dict[str, Any]] = None,
-    top_k: int = 300,
+    top_k: int = 200,
 ):
     """
     Generate LLM-based relevance scores for candidate games based on the user description.

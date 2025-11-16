@@ -281,8 +281,13 @@ def load_master_assets():
         "time_min",
         "time_max",
         "time_avg",
+        "description",
+        "full_description",
     ]
-    master_df = pd.read_csv("./data/games_master_data.csv", usecols=cols)
+    master_df = pd.read_csv(
+        "./data/games_master_data.csv",
+        usecols=lambda column: column in cols,
+    )
     master_df["bgg_id"] = pd.to_numeric(master_df["bgg_id"], errors="coerce").astype("Int64")
     master_df.dropna(subset=["bgg_id"], inplace=True)
     master_df["asset_url"] = (
@@ -291,6 +296,12 @@ def load_master_assets():
         .fillna(master_df["image"])
     )
     master_df.dropna(subset=["asset_url"], inplace=True)
+    description_series = pd.Series("", index=master_df.index, dtype="object")
+    if "full_description" in master_df.columns:
+        description_series = master_df["full_description"].copy()
+    if "description" in master_df.columns:
+        description_series = description_series.fillna(master_df["description"])
+    master_df["game_description"] = description_series.fillna("").astype(str)
     master_df = master_df.drop_duplicates("bgg_id")
     return master_df.set_index("bgg_id")
 
@@ -437,12 +448,16 @@ def generate_recommendation_reason(context: dict, recommendations: pd.DataFrame)
         "top_recommendations": top_games.to_dict(orient="records"),
     }
     prompt = (
-        "You are chatting inside a board game recommender app. "
-        "Using the structured data below, talk directly to the user in a friendly tone "
-        "and explain in 2-3 sentences why these games should click for them. "
-        "Call out specific mechanics, themes, or player counts that match their preferences, "
-        "and keep the explanation casual and encouraging.\n\n"
-        f"{json.dumps(payload, indent=2)}"
+        "You are generating a one-sentence board-game recommendation inside a board-game app. "
+        "You MUST base your sentence ONLY on the exact attributes provided in the structured data below. "
+        "If an attribute is not present in the data, you MUST NOT mention or guess it. "
+        "You MUST NOT infer themes, mechanics, settings, or gameplay elements that are not explicitly listed. "
+        "Stick strictly to what is provided.\n\n"
+        "Write ONE short, friendly sentence explaining why this game might appeal to the user, "
+        "referencing only real attributes such as playtime, player count, categories, mechanics, weight, or rating.\n\n"
+        "If there is not enough information to make a grounded statement, say: "
+        "'This game matches your preferences based on the data provided.'\n\n"
+    f"{json.dumps(payload, indent=2)}"
     )
 
     try:
@@ -471,10 +486,12 @@ def generate_game_insight(game_info: dict, context: dict) -> Optional[str]:
         "game": game_info,
     }
     prompt = (
-        "You are a friendly board game concierge responding to a specific user request. "
-        "Write ONE lively sentence (max 35 words) that ties this game's traits to the given preferences. "
-        "Explicitly reference at least one overlap (mechanics, categories, player count, play time, or the user's description). "
-        "Avoid repeating the exact game name or sounding generic.\n\n"
+        "You are generating a ONE-SENTENCE game insight for a board-game recommendation app. "
+        "Use ONLY the structured data provided below: categories, mechanics, player count, play time, weight, rating, hybrid_score, and game_description. "
+        "You may quote or paraphrase phrases from game_description, but do not invent any extra lore, settings, or mechanics beyond what is explicitly written. "
+        "Tie the user's stated preferences to one or two concrete details from those fields. "
+        "If the information is too sparse to ground a sentence, respond with the game descriptions.\n\n"
+        "Write ONE lively sentence (max 30 words) anchored strictly to those details.\n\n"
         f"{json.dumps(payload, indent=2, default=str)}"
     )
 
@@ -612,6 +629,7 @@ if selected_model:
 
     st.session_state["recommendations"] = recommendations
     st.session_state["recommendation_reason"] = None
+    st.session_state["game_insights"] = {}
     st.session_state["search_context"] = {
         "liked_games": liked_games,
         "disliked_games": disliked_games,
@@ -721,9 +739,25 @@ elif isinstance(recommendations_df, pd.DataFrame):
                 details = details.iloc[0]
             play_time_display = derive_playtime(details) or play_time_display
             players_display = derive_players(details) or players_display
+            details_description = details.get("Description")
+        else:
+            details_description = None
 
         insight_key = int(bgg_id) if pd.notna(bgg_id) else title
         insight_text = st.session_state["game_insights"].get(insight_key)
+        def _clean_description(raw_value):
+            if isinstance(raw_value, str):
+                stripped = raw_value.strip()
+                return stripped if stripped else None
+            return None
+
+        description_text = (
+            _clean_description(row.get("game_description"))
+            or _clean_description(row.get("description"))
+            or _clean_description(row.get("description_asset"))
+            or _clean_description(details_description)
+        )
+
         if insight_text is None:
             game_payload = {
                 "name": title,
@@ -734,6 +768,7 @@ elif isinstance(recommendations_df, pd.DataFrame):
                 "hybrid_score": score,
                 "play_time": play_time_display,
                 "players": players_display,
+                "game_description": description_text or "",
             }
             context = st.session_state.get("search_context", {})
             insight_text = generate_game_insight(game_payload, context) or ""
