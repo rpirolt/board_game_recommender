@@ -1,5 +1,9 @@
 # Board Game Recommender System
 
+The application has been published and is available at: 
+https://gamebuddy.streamlit.app/
+
+
 A hybrid recommendation system and interactive web app that suggests new board games based on player preferences, leveraging data from [BoardGameGeek](https://boardgamegeek.com/). Built with **Streamlit**, **Python**, and **machine learning**, this project demonstrates applied knowledge of Collaborative Filtering, Content-Based Filtering, and Large Language Models (LLMs).
 
 ## 🧰 Setup
