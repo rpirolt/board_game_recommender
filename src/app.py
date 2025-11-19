@@ -576,6 +576,7 @@ model_configs = {
     "B": {"alpha": 0.67, "beta": 0.25},
     "C": {"alpha": 0.33, "beta": 0.25},
     "D": {"alpha": 0.50, "beta": 0.50},
+    "BC": {"alpha": 0.50, "beta": 0.25},
 }
 
 # Display four buttons side-by-side
@@ -586,8 +587,9 @@ col3, col4 = st.sidebar.columns(2)
 buttons = {
 #    "A": col1.button("Get Recommendations A"),
 #    "B": col2.button("Get Recommendations B"),
-    "C": col3.button("**Get Recommendations**"),
+#    "C": col3.button("Get Recommendations C"),
 #    "D": col4.button("Get Recommendations D"),
+     "BC": col3.button("**Get Recommendations**")
 }
 
 # Determine which button was pressed
