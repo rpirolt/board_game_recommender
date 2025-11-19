@@ -568,7 +568,7 @@ description = st.sidebar.text_area("Describe the kind of board game you enjoy",
                                    placeholder="Example: I like strategic games with some luck and engine building mechanics.")
 
 # ========= RUN RECOMMENDER ==========
-st.sidebar.markdown("### Get Recommendations (Choose a Model)")
+#st.sidebar.markdown("### Get Recommendations (Choose a Model)")
 
 # Define model parameter sets
 model_configs = {
@@ -582,11 +582,12 @@ model_configs = {
 col1, col2 = st.sidebar.columns(2)
 col3, col4 = st.sidebar.columns(2)
 
+
 buttons = {
-    "A": col1.button("Get Recommendations A"),
-    "B": col2.button("Get Recommendations B"),
-    "C": col3.button("Get Recommendations C"),
-    "D": col4.button("Get Recommendations D"),
+#    "A": col1.button("Get Recommendations A"),
+#    "B": col2.button("Get Recommendations B"),
+    "C": col3.button("**Get Recommendations**"),
+#    "D": col4.button("Get Recommendations D"),
 }
 
 # Determine which button was pressed
@@ -618,7 +619,8 @@ if selected_model:
     }
     attributes["play_time"] = play_time_map.get(play_time, [0, 9999])
 
-    with st.spinner(f"Generating recommendations (Model {selected_model}: α={alpha}, β={beta})..."):
+    #with st.spinner(f"Generating recommendations (Model {selected_model}: α={alpha}, β={beta})..."):
+    with st.spinner("Generating recommendations..."):
         recommendations = ensemble_scores(
             liked_games=[] if not liked_games else games_df.loc[games_df["Name"].isin(liked_games), "BGGId"].tolist(),
             disliked_games=[] if not disliked_games else games_df.loc[games_df["Name"].isin(disliked_games), "BGGId"].tolist(),
@@ -664,7 +666,7 @@ elif isinstance(recommendations_df, pd.DataFrame):
         title = str(row["n_rank"]) + ".  " + str(row["name"])
         score = row.get("recommender_score", 0)
         year_pub = "(" + str(row.get("year_published")) + ")"
-        desc = f"Hybrid Score: {score:.3f}"
+        desc = f"Recommender Score: {100 * score:.0f}"
         bgg_link = row.get("bgg_link")
         if pd.isna(bgg_link) or not str(bgg_link).strip():
             bgg_id = row.get("bgg_id")
