@@ -24,7 +24,8 @@ pip install -r requirements.txt
 ```
 3. In your project root, create a folder named `.streamlit` (if it doesn’t exist), then create a file inside it called `secrets.toml`:
 ```bash
-.streamlit/secrets.toml
+mkdir -p .streamlit
+touch .streamlit/secrets.toml
 ```
 Add your OpenAI API key inside:
 ```toml
