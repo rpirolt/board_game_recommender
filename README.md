@@ -11,7 +11,7 @@ The software package is made up of several components, which work together to ru
 
 The `notebooks` folder contains various Python notebooks that were used for data exploration, cleanup, and model training, etc. These files are not run when the app is launched. However, they contain important backround on how the models were built and what decisions were made in the process. For example, `cf.ipynb` was used to train the CF model and produce `V_final_quantized.npz`, which is used to predict user game ratings.
 
-Lastly, the `src` folder houses the code that is run when the app is launched. `Recommender_UI.py` and `app.py` control look and feel of the streamlit app and capture the inputs from the user. Each model component has it's own script (`cbf.py`, `cf.py`, and `llm.py`) which take the user inputs and generate scores for each of the 21k+ board games in the dataset. Then, `model_ensemble.py` combines the scores using a weighted average, applies filter logic to remove irrelevant results, and sends them back to the UI to be surfaced to the user. 
+Lastly, the `src` folder houses the code that is run when the app is launched. `app.py` deploys, configures, and designs the streamlit app and captures inputs from the user. Each model component has it's own script (`cbf.py`, `cf.py`, and `llm.py`) which take the user inputs and generate scores for each of the 21k+ board games in the dataset. Then, `model_ensemble.py` combines the scores using a weighted average, applies filter logic to remove irrelevant results, and sends them back to the UI to be surfaced to the user. 
 
 ## 🧰 Installation Instructions
 1. Install dependencies
