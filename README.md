@@ -32,7 +32,7 @@ touch .streamlit/secrets.toml
 open -e .streamlit/secrets.toml
 ```
 ```toml
-OPENAI_API_KEY = "your_api_key_here"
+OPENAI_API_KEY = "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"
 ```
 
 ## 🚀 Run the App
