@@ -1,7 +1,7 @@
 # Board Game Recommender System
 
 The application has been published and is available at: 
-[https://gamebuddy.streamlit.app/
+[https://gamescout.streamlit.app/
 ](https://gamescout.streamlit.app/)
 
 ## 🎲 Description
