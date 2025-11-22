@@ -27,7 +27,10 @@ pip install -r requirements.txt
 mkdir -p .streamlit
 touch .streamlit/secrets.toml
 ```
-Add your OpenAI API key inside:
+4. Open secrets.toml and add your OpenAI API key inside:
+```bash
+open -e .streamlit/secrets.toml
+```
 ```toml
 OPENAI_API_KEY = "your_api_key_here"
 ```
