@@ -40,6 +40,14 @@ From the project root:
 ```bash
 streamlit run src/app.py
 ```
+
+If streamline does not launch automatically in your web browser, copy and paste the local URL found in your terminal. 
+You should see a message like this:
+
+```text
+  You can now view your Streamlit app in your browser.
+  Local URL: http://localhost:8501
+```
 Once the web app loads, use the sidebar to enter your board game preferences:
 
 The available fields are as follows:
