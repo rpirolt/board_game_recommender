@@ -14,11 +14,15 @@ The `notebooks` folder contains various Python notebooks that were used for data
 Lastly, the `src` folder houses the code that is run when the app is launched. `app.py` deploys, configures, and designs the streamlit app and captures inputs from the user. Each model component has it's own script (`cbf.py`, `cf.py`, and `llm.py`) which take the user inputs and generate scores for each of the 21k+ board games in the dataset. Then, `model_ensemble.py` combines the scores using a weighted average, applies filter logic to remove irrelevant results, and sends them back to the UI to be surfaced to the user. 
 
 ## 🧰 Installation Instructions
-1. Install dependencies
+1. Clone this repo:
+```bash
+git clone https://github.com/rpirolt/board_game_recommender/
+```
+2.  Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
-2. In your project root, create a folder named `.streamlit` (if it doesn’t exist), then create a file inside it called `secrets.toml`:
+3. In your project root, create a folder named `.streamlit` (if it doesn’t exist), then create a file inside it called `secrets.toml`:
 ```bash
 .streamlit/secrets.toml
 ```
